@@ -92,40 +92,72 @@ mat2 rot(float t){
   return mat2(c,s,-s,c);
 }
 // raytracing
-const vec2 t_min_max = vec2(0.001, MAX_FLOAT);
+const vec2 t_min_max = vec2(0.001, 120.);
 
 float mmap(vec3 q, inout int m){
-  float d = 1000.;
+  float d = 10000.;
 
   vec3 p = q;
-  p.y -= 1.;
-  p.x += 3.;
-  p.z -= 2.;
-  float sp = length(p) - 1.;
-  d = min(d, sp);
+  float size = 8.;
+  float bx;
+  vec3 bxs;
+  float otherbx = d;
+  for(int i=0; i < 3; i++){
+    p = q;
+    p[i] -= size;
+    vec3 b = abs(p) - vec3(size / 1.9);
+    bx = max(b.x, max(b.y,b.z));
+    bxs[i] = bx;
+    otherbx = min(otherbx, bx);
+    d = min(bx, d);
+  }
+  for(int i=0; i < 2; i++){
+    p = q;
+    p[i] += size;
+    vec3 b = abs(p) - vec3(size / 1.9);
+    bx = max(b.x, max(b.y,b.z));
+    d = min(bx, d);
+    bxs[2] = i == 1 ? bxs[2] : bx;
+    otherbx = min(bx, otherbx);
+  }
 
   p = q;
-  p -= vec3(2.5, 1., 1.);
-  float sp2 = length(p) - 1.;
-  d = min(d, sp2);
+  p.y += size / 2.1 - 1.;
+  p.x -= 2.;
+  vec3 b = abs(p) - vec3(1);
+  float box2 = max(b.x, max(b.y, b.z));
+  d = min(box2, d);
 
   p = q;
-  float x = length(p.xz) - 1.;
-  float y = p.y-.45;
-  float th = atan(p.z, p.x);
-  vec2 tp = vec2(x,y);
-  tp *= rot(th * 2.);
-  tp.y = abs(tp.y) - .2;
-  float tr = length(tp) - .15;
-  d = min(d,tr);
+  p.y += size / 2.1 - 1.5;
+  p.x += 1.5;
+  p.xz *= rot(PI/4.);
+  vec3 b2 = abs(p) - vec3(1,1.7,1);
+  float box = max(b2.x, max(b2.y, b2.z));
+  d = min(box, d);
 
   p = q;
-  float pl = p.y;
-  d = min(d, pl);
+  p.y -= size / 2.1;
+  b = abs(p) - vec3(1., .1, 1.);
+  float light = max(b.x, max(b.y, b.z));
+  d = min(d, light);
 
-  if(d == sp || d == sp2) m = 1;
-  if(d == pl) m = 0;
-  if(d == tr) m = 2;
+
+  if(d == otherbx || d == box){
+    m = 0;
+  }
+  if(d == light){
+    m = 1;
+  }
+  if(d == box2){
+    m = 2;
+  }
+  if(d == bxs[2]){
+    m = 4;
+  }
+  if(d == bxs[0]){
+    m = 3;
+  }
 
   return d;
 }
@@ -153,7 +185,7 @@ bool raycast(const in ray r, inout hit h){
     d = mmap(p, h.m);
     if(d < t_min_max.x || d > t_min_max.y) break;
 
-    t += clamp(d, 0.02, .5);
+    t += clamp(d, 0.02, .9);
   }
 
 
@@ -232,18 +264,24 @@ float calcSoftshadow(vec3 ro, vec3 rd, float mint, float tmax)
 
 struct mat {
   float roughness, metalness;
-  vec3 albedo;
+  vec3 albedo, emission;
 };
 
 mat getMaterial(int m){
   if(m == 0){
-    return mat(.9, .01, vec3(0.7));
+    return mat(.8, .01, vec3(0.5), vec3(0));
   }
   if(m == 1){
-    return mat(.1, .01, vec3(.8, .3, .4));
+    return mat(.5, 0.01, vec3(0,0,0), vec3(4.));
   }
   if(m == 2){
-    return  mat(.2, .9, vec3(.4, .8, .8));
+    return  mat(.1, .9, vec3(.4, .8, .8), vec3(0));
+  }
+  if(m == 3){
+    return mat(.8, .01, vec3(.3, .8, .3), vec3(0));
+  }
+  if(m == 4){
+    return mat(.8, .01, vec3(.9, .3, .3), vec3(0));
   }
 }
 
@@ -274,22 +312,20 @@ vec3 brdf(inout ray r, inout hit ht, in vec3 col){
 
   float rng = rand2n().r;
   float refl_prob = (spec.r + spec.g + spec.b) / 3.;
-  vec3 c = diffuse + fSpec;
   if(rng < refl_prob){
     r.dir = reflect(r.dir, ht.n) + hemi * roughness;
-    c *= PI * roughness;
+    diffuse *= PI * roughness;
   }else{
     r.dir = hemi;
-    c *= PI;
+    diffuse *= PI;
   }
   r.o = ht.p + ht.n*.1;
-
 
   // PDF(OMEGA) = cos(theta)/PI;
   // therefore, taking the rendering equation:
   // f(l,v)L_i(l,v) dot+(n,l) dw
   // we need to modulate by 1/PDF -> L_i * f(l,v) * PI
-  return col * c;
+  return col * (diffuse + fSpec) + m.emission * PI;
 }
 
 vec3 ray_color(ray r){
@@ -302,14 +338,14 @@ vec3 ray_color(ray r){
       col = brdf(r, h, col);
 
       // Direct lighting
-      vec3 sunDirection = normalize(vec3(-4., 3., 1.));
-      vec3 sunSampleDir = getConeSample(sunDirection,1e-5);
-      float sunLight = dot(h.n, sunSampleDir);
-      ray nr = ray(r.o, sunSampleDir);
-      hit nh;
-      if (sunLight>0.0 && !raycast(nr, nh)) {
-        direct += col*sunLight * .2;
-      }
+      // vec3 sunDirection = normalize(vec3(-4., 3., 1.));
+      // vec3 sunSampleDir = getConeSample(sunDirection,1e-5);
+      // float sunLight = dot(h.n, sunSampleDir);
+      // ray nr = ray(r.o, sunSampleDir);
+      // hit nh;
+      // if (sunLight>0.0 && !raycast(nr, nh)) {
+      //   direct += col*sunLight * .2;
+      // }
     }else{
       // skybox
       col *= vec3(1);
@@ -324,7 +360,7 @@ void main(){
   vec2 p = uv*2. - 1.;
   p.y *= resolution.y / resolution.x;
   // new seed every frame
-  seed = fract(uv * fract(time) * mod(time, 23.));
+  seed = fract(uv * fract(time) * mod(time * .001, 10.));
 
 
   // anti aliasing
@@ -338,14 +374,15 @@ void main(){
     const vec3 up = vec3(0,1,0);
 
     vec3 ro = vec3(0);
-    ro += up * 5.;
-    // ro += vec3(0,0,-1) * 3.;
-    ro += vec3(cos(PI / 3.), 0., sin(PI / 5.)*1.2) * 5.;
+    ro += up * 1.7;
+    // ro += vec3(0,0,-1) * 10.;
+    float angle = PI - PI / 15.;
+    ro += vec3(sin(angle), 0., cos(angle)) * 10.;
 
     vec3 focus = vec3(0);
     vec3 rov = normalize(focus - ro),
-    u = normalize(cross(rov, up)),
-    v = cross(u,rov);
+    u = normalize(cross(up,rov)),
+    v = cross(rov,u);
     vec3 rd = mat3(u,v,rov) * normalize(vec3(p, 1.));
     ray r = ray(ro, rd);
 

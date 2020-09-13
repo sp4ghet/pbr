@@ -237,10 +237,10 @@ struct mat {
 
 mat getMaterial(int m){
   if(m == 0){
-    return mat(.9, .01, vec3(0.7));
+    return mat(.1, .9, vec3(.7));
   }
   if(m == 1){
-    return mat(.1, .01, vec3(.8, .3, .4));
+    return mat(.5, .01, vec3(.8, .3, .4));
   }
   if(m == 2){
     return  mat(.2, .9, vec3(.4, .8, .8));
@@ -249,47 +249,25 @@ mat getMaterial(int m){
 
 vec3 brdf(inout ray r, inout hit ht, in vec3 col){
 
-  vec3 hemi = getCosineWeightedSample(ht.n);
+  vec3 hemi;
   mat m = getMaterial(ht.m);
-  vec3 rho = m.albedo;
 
-  float metalness = m.metalness;
-  float roughness = m.roughness;
+  vec3 diffuse = m.albedo / PI;
 
-  vec3 v = -r.dir;
-  vec3 l = normalize(vec3(-4., 3., 1.));
-
-  vec3 h = normalize(v + l);
-
-  vec3 f0 = mix(vec3(0.02), rho, metalness);
-  vec3 spec = schlick(h, l, f0);
-
-  float mask = 0.;
-  mask = g2smith(l,v,h,roughness);
-
-  float ndf = ggx(ht.n, h, roughness);
-
-  vec3 fSpec = spec * mask * ndf;
-  vec3 diffuse = rho / PI;
-
-  float rng = rand2n().r;
-  float refl_prob = (spec.r + spec.g + spec.b) / 3.;
-  vec3 c = diffuse + fSpec;
-  if(rng < refl_prob){
-    r.dir = reflect(r.dir, ht.n) + hemi * roughness;
-    c *= PI * roughness;
-  }else{
-    r.dir = hemi;
-    c *= PI;
-  }
   r.o = ht.p + ht.n*.1;
 
+#define IMP
+#ifdef IMP
+  hemi = getCosineWeightedSample(ht.n);
+  r.dir = hemi;
+  return col * diffuse * PI;
+#else
+  hemi = getSample(ht.n);
+  r.dir = hemi;
+  float nl = max(0., dot(ht.n, r.dir));
+  return col * diffuse * nl * 2. * PI;
+#endif
 
-  // PDF(OMEGA) = cos(theta)/PI;
-  // therefore, taking the rendering equation:
-  // f(l,v)L_i(l,v) dot+(n,l) dw
-  // we need to modulate by 1/PDF -> L_i * f(l,v) * PI
-  return col * c;
 }
 
 vec3 ray_color(ray r){
@@ -308,7 +286,7 @@ vec3 ray_color(ray r){
       ray nr = ray(r.o, sunSampleDir);
       hit nh;
       if (sunLight>0.0 && !raycast(nr, nh)) {
-        direct += col*sunLight * .2;
+        direct += col*sunLight * .3;
       }
     }else{
       // skybox
@@ -338,9 +316,9 @@ void main(){
     const vec3 up = vec3(0,1,0);
 
     vec3 ro = vec3(0);
-    ro += up * 5.;
+    ro += up * 3.;
     // ro += vec3(0,0,-1) * 3.;
-    ro += vec3(cos(PI / 3.), 0., sin(PI / 5.)*1.2) * 5.;
+    ro += vec3(-cos(PI / 5.), 0., -sin(PI / 5.)) * 4.;
 
     vec3 focus = vec3(0);
     vec3 rov = normalize(focus - ro),
@@ -364,7 +342,7 @@ void main(){
 
     // gamma correction
     vec3 c = result.xyz / result.a;
-    c = smoothstep(0., 1., c);
+    // c = smoothstep(0., 1., c);
     // c = pow(c, vec3(.4545));
 
     gl_FragColor = vec4(c, 1.);

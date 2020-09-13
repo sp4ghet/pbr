@@ -130,6 +130,7 @@ vec3 BRDF(vec3 v, vec3 l, vec3 n, float metalness, float roughness, vec3 rho){
   vec3 fSpec = spec * mask * ndf;
   float kd = mix(1. - spec.r, 0., metalness);
   rho *= kd;
+
   vec3 diffuse = diffuse(rho, f0, n,  l,  v);
   float nlPlus = max(0., dot(n,l));
   return fSpec *  nlPlus + diffuse * nlPlus;
@@ -169,8 +170,8 @@ void main(){
   float tm = time * .3;
   vec3 ro=vec3(0.,0.,0.);
   ro += vec3(0., 5., 0.);
-  ro += vec3(cos(tm), 0., sin(tm)) * 5.;
-  // ro += vec3(cos(PI/4.), 0., sin(-PI/4.)) * 6.;
+  // ro += vec3(cos(tm), 0., sin(tm)) * 5.;
+  ro += vec3(cos(PI/4.), 0., sin(-PI/4.)) * 6.;
 
   vec3 up = vec3(0.,1.,0.);
   vec3 focus = vec3(0., 0., 0.);
@@ -200,9 +201,9 @@ void main(){
 
 
   if(d < 0.01) {
-      // vec3 rho = vec3(0.955,0.638,0.538);
-      vec3 rho = vec3(.8, .4, .4);
-      float roughness = .9;
+      vec3 rho = vec3(0.955,0.638,0.538);
+      // vec3 rho = vec3(.8, .4, .4);
+      float roughness = .5;
       float metalness = .9;
       c = BRDF(-rd, l, n, metalness, roughness, rho);
       // c += rho * .2 * max(0. , dot(n,h));
