@@ -1,0 +1,10 @@
+{
+  "audio": true, // Enable audio input
+  "glslify": true,
+  "pixelRatio": 1.,
+  IMPORTED: {
+    tNoise:{
+      "PATH": "./images/fbm2.jpg"
+    }
+  },
+}
