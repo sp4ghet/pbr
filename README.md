@@ -5,16 +5,12 @@ Random things from physically based rendering that I try
 
 GGX + Smith specular model and Lambertian diffuse model.
 
-<image src="screenies/pbr.png" width="400px"/>
-<image src="screenies/cornell.jpeg" width="400px"/>
+<image src="screenies/pbr.png" width="400px"/> <image src="screenies/cornell.jpeg" width="400px"/>
 
 ----
 A Comparison of various metalness and roughness parameters.
 
-<image src="screenies/pbrm0r1.png" width="400px"/>
-<image src="screenies/pbrm0r0.png" width="400px"/>
-<image src="screenies/pbrm1r1.png" width="400px"/>
-<image src="screenies/pbrm1r0.png" width="400px"/>
+<image src="screenies/pbrm0r1.png" width="400px"/> <image src="screenies/pbrm0r0.png" width="400px"/> <image src="screenies/pbrm1r1.png" width="400px"/> <image src="screenies/pbrm1r0.png" width="400px"/>
 
 | Position     | Roughness | Metalness |
 | :------------- | :------------- | :-------- |
