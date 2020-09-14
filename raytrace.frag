@@ -105,7 +105,7 @@ float mmap(vec3 q, inout int m){
   d = min(d, sp);
 
   p = q;
-  p -= vec3(2.5, 1., 1.);
+  p -= vec3(1.5, 1., -3.);
   float sp2 = length(p) - 1.;
   d = min(d, sp2);
 
@@ -236,14 +236,16 @@ struct mat {
 };
 
 mat getMaterial(int m){
+  float met = .01;
+  float rg = .1;
   if(m == 0){
-    return mat(.9, .01, vec3(0.7));
+    return mat(rg, met, vec3(0.7));
   }
   if(m == 1){
-    return mat(.1, .01, vec3(.8, .3, .4));
+    return mat(rg, met, vec3(.8, .3, .4));
   }
   if(m == 2){
-    return  mat(.2, .9, vec3(.4, .8, .8));
+    return  mat(rg, met, vec3(.4, .8, .8));
   }
 }
 
@@ -269,26 +271,28 @@ vec3 brdf(inout ray r, inout hit ht, in vec3 col){
 
   float ndf = ggx(ht.n, h, roughness);
 
-  vec3 fSpec = spec * mask * ndf;
+  vec3 fSpec = spec * mask * ndf / PI;
+  float refl_prob = (spec.r + spec.g + spec.b) / 3.;
   vec3 diffuse = rho / PI;
 
+  // PDF(OMEGA) = cos(theta)/PI;
+  // therefore, taking the rendering equation:
+  // f(l,v)L_i(l,v) dot+(n,l) dw
+  // we need to modulate by 1/PDF -> L_i * f(l,v) * PI
   float rng = rand2n().r;
-  float refl_prob = (spec.r + spec.g + spec.b) / 3.;
+
   vec3 c = diffuse + fSpec;
   if(rng < refl_prob){
     r.dir = reflect(r.dir, ht.n) + hemi * roughness;
-    c *= PI * roughness;
+    fSpec *= PI * (1. - spec);
+    diffuse *= PI;
+    c = diffuse + fSpec;
   }else{
     r.dir = hemi;
     c *= PI;
   }
   r.o = ht.p + ht.n*.1;
 
-
-  // PDF(OMEGA) = cos(theta)/PI;
-  // therefore, taking the rendering equation:
-  // f(l,v)L_i(l,v) dot+(n,l) dw
-  // we need to modulate by 1/PDF -> L_i * f(l,v) * PI
   return col * c;
 }
 
@@ -303,17 +307,18 @@ vec3 ray_color(ray r){
 
       // Direct lighting
       vec3 sunDirection = normalize(vec3(-4., 3., 1.));
-      vec3 sunSampleDir = getConeSample(sunDirection,1e-5);
+      vec3 sunSampleDir = getConeSample(sunDirection,.0001);
       float sunLight = dot(h.n, sunSampleDir);
       ray nr = ray(r.o, sunSampleDir);
       hit nh;
       if (sunLight>0.0 && !raycast(nr, nh)) {
-        direct += col*sunLight * .2;
+        float intensity = 400.;
+        col += sunLight * .0001 * intensity * PI * 2.;
       }
     }else{
       // skybox
       col *= vec3(1);
-      return direct + col;
+      return col;
     }
   }
   return col;
