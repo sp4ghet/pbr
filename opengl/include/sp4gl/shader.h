@@ -11,10 +11,13 @@
 class Shader {
 public:
   unsigned int ID;
+  const char *vPath;
+  const char *fPath;
 
   Shader(const char *vertexPath, const char *fragmentPath);
   void use();
 
+  void recompile();
   void setBool(const std::string &name, bool value) const;
   void setInt(const std::string &name, int value) const;
   void setFloat(const std::string &name, float value) const;
@@ -24,4 +27,7 @@ public:
                float valw) const;
 
   void setMat4(const std::string &name, glm::mat4 value) const;
+
+private:
+  void loadShaders(const char *vertexPath, const char *fragmentPath);
 };

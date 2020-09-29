@@ -29,12 +29,22 @@ void Mesh::setupMesh() {
   glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
                         (void *)offsetof(Vertex, TexCoords));
 
+  glEnableVertexAttribArray(3);
+  glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                        (void *)offsetof(Vertex, Tangent));
+
+  glEnableVertexAttribArray(4);
+  glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                        (void *)offsetof(Vertex, BiTangent));
+
   glBindVertexArray(0);
 }
 
 void Mesh::Draw(Shader &shader) {
   unsigned int diffuseNr = 1;
   unsigned int specularNr = 1;
+  unsigned int bumpNr = 1, roughnessNr = 1;
+
   for (unsigned int i = 0; i < textures.size(); i++) {
     glActiveTexture(GL_TEXTURE0 + i); // activate texture unit first
     // retrieve texture number (the N in diffuse_textureN)
@@ -44,6 +54,10 @@ void Mesh::Draw(Shader &shader) {
       number = std::to_string(diffuseNr++);
     else if (name == "texture_specular")
       number = std::to_string(specularNr++);
+    else if (name == "texture_normal")
+      number = std::to_string(bumpNr++);
+    else if (name == "texture_roughness")
+      number = std::to_string(roughnessNr++);
     shader.setInt((name + number).c_str(), i);
     glBindTexture(GL_TEXTURE_2D, textures[i].id);
   }

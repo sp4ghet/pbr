@@ -30,7 +30,7 @@ public:
   }
 
   void ProcessKeyBoard(Camera_Movement direction, float deltaTime) {
-    float velocity = MovementSpeed * deltaTime;
+    float velocity = MovementSpeed * deltaTime * 45.f / Zoom;
     switch (direction) {
     case FORWARD:
       Position += Front * velocity;
@@ -49,8 +49,8 @@ public:
 
   void ProcessMouseMovement(float xoffset, float yoffset,
                             bool constrainPitch = true) {
-    xoffset *= MouseSensitivity;
-    yoffset *= MouseSensitivity;
+    xoffset *= MouseSensitivity * 45.f / Zoom;
+    yoffset *= MouseSensitivity * 45.f / Zoom;
 
     Yaw += xoffset;
     Pitch += yoffset;

@@ -9,7 +9,8 @@ void Model::Draw(Shader &shader) {
 void Model::loadModel(string path) {
   Assimp::Importer import;
   const aiScene *scene =
-      import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+      import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs |
+                                aiProcess_CalcTangentSpace);
   if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
       !scene->mRootNode) {
     printf("ERROR::ASSIMP::%s\n", import.GetErrorString());
@@ -18,7 +19,7 @@ void Model::loadModel(string path) {
 
   directory = path.substr(0, path.find_last_of("/"));
   processNode(scene->mRootNode, scene);
-  printf("loaded %d textures\n", textures_loaded.size());
+  printf("loaded %zd textures\n", textures_loaded.size());
 }
 
 void Model::processNode(aiNode *node, const aiScene *scene) {
@@ -52,6 +53,13 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene) {
     vect.z = mesh->mNormals[i].z;
     vertex.Normal = vect;
 
+    vect.x = mesh->mTangents[i].x;
+    vect.y = mesh->mTangents[i].y;
+    vect.z = mesh->mTangents[i].z;
+    vertex.Tangent = vect;
+
+    vertex.BiTangent = glm::cross(vertex.Normal, vertex.Tangent);
+
     if (mesh->mTextureCoords[0]) {
       glm::vec2 vec;
       vec.x = mesh->mTextureCoords[0][i].x;
@@ -79,6 +87,18 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene) {
     vector<Texture> specularMaps = loadMaterialTextures(
         material, aiTextureType_SPECULAR, "texture_specular");
     textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+    vector<Texture> normalMaps =
+        loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
+    textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+    vector<Texture> roughnessMaps = loadMaterialTextures(
+        material, aiTextureType_DISPLACEMENT, "texture_roughness");
+    textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
+    printf("Found %zd diffuse, %zd specular, %zd normal, %zd roughness maps \n",
+           diffuseMaps.size(), specularMaps.size(), normalMaps.size(),
+           roughnessMaps.size());
+    for (Texture t : roughnessMaps) {
+      printf("Roughness map: %s\n", t.path.c_str());
+    }
   }
 
   return Mesh(vertices, indices, textures);
