@@ -1,7 +1,9 @@
 #pragma once
 
-#include "glad.h"
+#include "glad/glad.h"
 #include <fstream>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -20,4 +22,6 @@ public:
                float valz) const;
   void setVec4(const std::string &name, float valx, float valy, float valz,
                float valw) const;
+
+  void setMat4(const std::string &name, glm::mat4 value) const;
 };

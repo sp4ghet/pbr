@@ -25,6 +25,7 @@ Shader::Shader(const char *vertexPath, const char *fragmentPath) {
 
   } catch (std::ifstream::failure e) {
     printf("ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ\n");
+    printf("%d %s\n", e.code().value(), e.what());
   }
 
 #ifdef DEBUG
@@ -92,4 +93,9 @@ void Shader::setVec3(const std::string &name, float valx, float valy,
 void Shader::setVec4(const std::string &name, float valx, float valy,
                      float valz, float valw) const {
   glUniform4f(glGetUniformLocation(ID, name.c_str()), valx, valy, valz, valw);
+}
+
+void Shader::setMat4(const std::string &name, glm::mat4 value) const {
+  glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE,
+                     glm::value_ptr(value));
 }
