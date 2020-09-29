@@ -16,19 +16,21 @@ add_library(glad "${PROJECT_SOURCE_DIR}/thirdparty/glad.c")
 target_include_directories(glad PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
 add_library(stb INTERFACE)
-set_target_properties(stb PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/include/stb"
-)
 
 add_library(glm INTERFACE)
 set_target_properties(glm PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/include"
 )
 
+add_library(assimp STATIC IMPORTED)
+set_target_properties(assimp PROPERTIES
+  IMPORTED_LOCATION "${PROJECT_SOURCE_DIR}/libs/assimp-vc142-mtd.lib"
+  INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/include/assimp"
+)
 
-set(LIBS glfw3 glad opengl32 stb glm)
+set(LIBS glfw3 glad opengl32 stb glm assimp)
 
-set(SRCS src/main.cpp src/shader.cpp src/image.cpp)
+set(SRCS src/main.cpp src/shader.cpp src/image.cpp src/mesh.cpp src/model.cpp)
 
 add_executable(sp4gl ${SRCS})
 target_link_libraries(sp4gl ${LIBS})
