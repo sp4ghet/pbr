@@ -102,16 +102,18 @@ void main(){
     float metallic = texture(texture_specular1, fs_in.uv).r;
     float roughness = clamp(texture(texture_roughness1, fs_in.uv).r, 0.01, .99);
     vec3 albedo = texture(texture_diffuse1, fs_in.uv).rgb;
-    vec3 nMap = texture(texture_normal1, fs_in.uv).rgb; // normal map is broke for the guitar model
-    vec3 normal = fs_in.TBN * vec3(0., 0., 1.);
+    vec3 normal = texture(texture_normal1, fs_in.uv).rgb;
+    normal = normal * 2. - 1.; // remap [0,1] to [-1,1]
+    normal = normalize(normal);
+    normal = normalize(fs_in.TBN * normal);
 
     metallic = smoothstep(0.6, 0.65, metallic);
     roughness = pow(roughness, 1.);
-    vec3 l = -normalize(vec3(-2., -5., 2.));
+    vec3 l = normalize(vec3(2., 5., 2.));
 
-    vec3 rd = normalize(fs_in.vPos - camPos);
+    vec3 v = normalize(camPos - fs_in.vPos);
 
-    c = BRDF(-rd, l, normal, metallic, roughness, albedo);
+    c = BRDF(v, l, normal, metallic, roughness, albedo);
 
     c += albedo * .1;
 

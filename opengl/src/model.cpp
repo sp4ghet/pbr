@@ -58,7 +58,10 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene) {
     vect.z = mesh->mTangents[i].z;
     vertex.Tangent = vect;
 
-    vertex.BiTangent = glm::cross(vertex.Normal, vertex.Tangent);
+    vect.x = mesh->mBitangents[i].x;
+    vect.y = mesh->mBitangents[i].y;
+    vect.z = mesh->mBitangents[i].z;
+    vertex.BiTangent = vect;
 
     if (mesh->mTextureCoords[0]) {
       glm::vec2 vec;

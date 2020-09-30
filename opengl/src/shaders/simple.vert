@@ -26,6 +26,5 @@ void main()
     // then retrieve perpendicular vector B with the cross product of T and N
     vec3 B = cross(N, T);
 
-
     vs_out.TBN = mat3(T, B, N);
 }

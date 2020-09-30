@@ -19,6 +19,8 @@ void mouse_button_callback(GLFWwindow *window, int button, int action,
                            int mods);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
+unsigned int loadCubemap(vector<string> textures_faces);
+
 Camera camera(glm::vec3(0., 0., 10.));
 float prevTime = 0., deltaTime = 0.;
 bool recompileFlag = false;
@@ -33,6 +35,33 @@ vector<Vertex> quadVertices = {
 
 vector<unsigned int> quadIndices = {0, 1, 3, 1, 2, 3};
 vector<Texture> quadTextures;
+
+vector<string> cubemap_faces = {"./resources/textures/skybox/right.jpg",
+                                "./resources/textures/skybox/left.jpg",
+                                "./resources/textures/skybox/top.jpg",
+                                "./resources/textures/skybox/bottom.jpg",
+                                "./resources/textures/skybox/front.jpg",
+                                "./resources/textures/skybox/back.jpg"};
+
+float skyboxVertices[] = {
+    // positions
+    -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
+    1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
+
+    -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f,
+    -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,
+
+    1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,
+    1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f,
+
+    -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,
+    1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,
+
+    -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,
+    1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f,
+
+    -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f,
+    1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f};
 
 int main(int, char **) {
 
@@ -68,11 +97,13 @@ int main(int, char **) {
   Shader outline("./shaders/simple.vert", "./shaders/fill.frag");
   Shader screenShader("./shaders/fullscreen_quad.vert",
                       "./shaders/postprocess.frag");
+  Shader skyboxShader("./shaders/skybox.vert", "./shaders/skybox.frag");
   printf("Shaders loaded...\n");
 
   Mesh quadMesh(quadVertices, quadIndices, quadTextures);
   Model backpack("./resources/backpack/backpack.obj");
   printf("Model loaded...\n");
+
 #ifdef DEBUG
   int nrAttributes;
   glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
@@ -106,6 +137,22 @@ int main(int, char **) {
     printf("ERROR::FRAMEBUFFER:: Frame buffer is not complete!\n");
   }
 
+  unsigned int cubemapId = loadCubemap(cubemap_faces);
+  printf("Cubemap loaded at: %d\n", cubemapId);
+
+  unsigned int skyboxVAO;
+  glGenVertexArrays(1, &skyboxVAO);
+  unsigned int skyboxVBO;
+  glGenBuffers(1, &skyboxVBO);
+  glBindVertexArray(skyboxVAO);
+  glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices,
+               GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+  glBindVertexArray(0);
+  glActiveTexture(GL_TEXTURE0);
+
   while (!glfwWindowShouldClose(window)) {
     deltaTime = (float)glfwGetTime() - prevTime;
     prevTime = (float)glfwGetTime();
@@ -126,8 +173,24 @@ int main(int, char **) {
 
     glm::mat4 proj =
         glm::perspective(glm::radians(camera.Zoom), 4.f / 3.f, 0.001f, 100.f);
-
     glm::mat4 view = camera.GetViewMatrix();
+
+    // render cubemap
+    glDepthMask(GL_FALSE);
+    skyboxShader.use();
+    skyboxShader.setMat4("projection", proj);
+    skyboxShader.setMat4("view", glm::mat4(glm::mat3(view)));
+
+    glBindVertexArray(skyboxVAO);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapId);
+    skyboxShader.setInt("skybox", 0);
+
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glDepthMask(GL_TRUE);
+    glBindVertexArray(0);
+    glActiveTexture(GL_TEXTURE0);
+
     glm::mat4 model = glm::mat4(.1);
     model = glm::rotate(model, glm::radians(-90.f), glm::vec3(1., 0., 0.));
     glm::mat4 mvp = proj * view * model;
@@ -220,4 +283,34 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
 
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
   camera.ProcessMouseScroll((float)yoffset);
+}
+
+unsigned int loadCubemap(vector<std::string> faces) {
+  stbi_set_flip_vertically_on_load(false);
+  unsigned int textureID;
+  glGenTextures(1, &textureID);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+  int width, height, nrChannels;
+  for (unsigned int i = 0; i < faces.size(); i++) {
+    unsigned char *data =
+        stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+    if (data) {
+      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height,
+                   0, GL_RGB, GL_UNSIGNED_BYTE, data);
+      printf("Loaded cubemap texture %s %d\n", faces[i].c_str(),
+             GL_TEXTURE_CUBE_MAP_POSITIVE_X + i);
+      stbi_image_free(data);
+    } else {
+      std::cout << "Cubemap failed to load at path: " << faces[i] << std::endl;
+      stbi_image_free(data);
+    }
+  }
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+  return textureID;
+
+  stbi_set_flip_vertically_on_load(true);
 }

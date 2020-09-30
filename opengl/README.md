@@ -10,3 +10,9 @@ Required libraries:
 - assimp
 
 (Find source and compile yourself or find binaries to link to them.)
+
+
+model class plans:
+- load vertices and indices using assimp
+- load textures manually (add a method)
+    - something like `loadTexture(string uniformName, string path)`
