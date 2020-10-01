@@ -6,15 +6,20 @@ in VS_OUT{
   vec3 vPos;
   vec2 uv;
   mat3 TBN;
+  vec4 FragPosLightSpace;
 } fs_in;
 
 uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_specular1; // metallic
 uniform sampler2D texture_roughness1; // roughness
 uniform sampler2D texture_normal1;
+uniform sampler2D shadow_map;
 
 uniform vec3 camPos;
+uniform vec3 lightPos;
 uniform mat4 MVP;
+uniform mat4 model;
+uniform mat4 lightVP;
 
 const float PI = 3.14159265;
 
@@ -96,6 +101,19 @@ vec3 BRDF(vec3 v, vec3 l, vec3 n, float metalness, float roughness, vec3 rho){
   return clamp(outc, vec3(0.), vec3(1.));
 }
 
+float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal){
+
+  vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+  vec3 projNorm = normalize((lightVP * model * vec4(normal, 1.)).xyz);
+  projCoords = projCoords * .5 + .5;
+  float nearestDepth = texture(shadow_map, projCoords.xy).r;
+  projCoords -= (projNorm * .5 + .5) * .005;
+  float currentDepth = projCoords.z;
+
+  float shadow = currentDepth > nearestDepth ? .8 : 0.2;
+
+  return shadow;
+}
 
 void main(){
     vec3 c = vec3(1.);
@@ -109,13 +127,18 @@ void main(){
 
     metallic = smoothstep(0.6, 0.65, metallic);
     roughness = pow(roughness, 1.);
-    vec3 l = normalize(vec3(2., 5., 2.));
+
+    vec3 l = normalize(lightPos - fs_in.vPos);
 
     vec3 v = normalize(camPos - fs_in.vPos);
 
     c = BRDF(v, l, normal, metallic, roughness, albedo);
 
+    float shadow = ShadowCalculation(fs_in.FragPosLightSpace, normal);
+
     c += albedo * .1;
+
+    c *= 1. - shadow;
 
     FragColor = vec4(c, 1.);
 }

@@ -42,10 +42,17 @@ vec3 convolve(){
     return col;
 }
 
+// required when using a perspective projection matrix
+float LinearizeDepth(float depth)
+{
+    float near_plane = 1.; float far_plane = 15.;
+    float z = depth * 2.0 - 1.0; // Back to NDC
+    return (2.0 * near_plane * far_plane) / (far_plane + near_plane - z * (far_plane - near_plane));
+}
+
 void main(){
     vec3 c = vec3(1.);
-
-    c = texture(renderBuffer, TexCoords).rgb;
+    c  = texture(renderBuffer, TexCoords).rgb;
 
     c = smoothstep(vec3(0.), vec3(1.), c);
     c = pow(c, vec3(0.4545));

@@ -9,10 +9,12 @@ out VS_OUT{
   vec3 vPos;
   vec2 uv;
   mat3 TBN;
+  vec4 FragPosLightSpace;
 } vs_out;
 
 uniform mat4 MVP;
 uniform mat4 model;
+uniform mat4 lightVP;
 
 void main()
 {
@@ -27,4 +29,7 @@ void main()
     vec3 B = cross(N, T);
 
     vs_out.TBN = mat3(T, B, N);
+
+    mat4 lightMVP = lightVP * model;
+    vs_out.FragPosLightSpace = lightMVP * vec4(aPos, 1.);
 }
