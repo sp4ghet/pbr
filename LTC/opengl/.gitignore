@@ -1,0 +1,5 @@
+build/
+*.zip
+glfw-3.3.2/
+glm-0.9.9.8/
+assimp-5.0.1/
