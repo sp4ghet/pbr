@@ -49,8 +49,8 @@ public:
 
   void ProcessMouseMovement(float xoffset, float yoffset,
                             bool constrainPitch = true) {
-    xoffset *= MouseSensitivity * 45.f / Zoom;
-    yoffset *= MouseSensitivity * 45.f / Zoom;
+    xoffset *= MouseSensitivity * Zoom / 45.f;
+    yoffset *= MouseSensitivity * Zoom / 45.f;
 
     Yaw += xoffset;
     Pitch += yoffset;

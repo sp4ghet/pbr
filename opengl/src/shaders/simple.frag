@@ -15,6 +15,14 @@ uniform sampler2D texture_roughness1; // roughness
 uniform sampler2D texture_normal1;
 uniform sampler2D shadow_map;
 
+uniform bool hasDiffuse;
+uniform bool hasNormal;
+uniform bool hasRoughness;
+uniform bool hasSpecular;
+
+const int NUM_LIGHTS = 4;
+uniform vec3 lightPositions[NUM_LIGHTS];
+uniform vec3 lightColors[NUM_LIGHTS];
 uniform vec3 camPos;
 uniform vec3 lightPos;
 uniform mat4 MVP;
@@ -101,44 +109,51 @@ vec3 BRDF(vec3 v, vec3 l, vec3 n, float metalness, float roughness, vec3 rho){
   return clamp(outc, vec3(0.), vec3(1.));
 }
 
-float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal){
+float ShadowCalculation(vec4 fragPosLightSpace){
 
   vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-  vec3 projNorm = normalize((lightVP * model * vec4(normal, 1.)).xyz);
   projCoords = projCoords * .5 + .5;
-  float nearestDepth = texture(shadow_map, projCoords.xy).r;
-  projCoords -= (projNorm * .5 + .5) * .005;
   float currentDepth = projCoords.z;
+  float shadow = 0.;
 
-  float shadow = currentDepth > nearestDepth ? .8 : 0.2;
+  vec2 texelSize = 1. / textureSize(shadow_map, 0);
+  for(int x = -1; x <= 1; x++){
+    for(int y = -1; y <= 1; y++){
+    float nearestDepth = texture(shadow_map, projCoords.xy + vec2(x,y) * texelSize).r;
+
+    shadow += currentDepth > nearestDepth ? 1. : 0.;
+    }
+  }
+  shadow /= 9.;
 
   return shadow;
 }
 
 void main(){
-    vec3 c = vec3(1.);
-    float metallic = texture(texture_specular1, fs_in.uv).r;
-    float roughness = clamp(texture(texture_roughness1, fs_in.uv).r, 0.01, .99);
-    vec3 albedo = texture(texture_diffuse1, fs_in.uv).rgb;
-    vec3 normal = texture(texture_normal1, fs_in.uv).rgb;
+    vec3 c = vec3(0.);
+    float metallic = hasSpecular ? texture(texture_specular1, fs_in.uv).r : 0.01;
+    float roughness = hasRoughness  ? texture(texture_roughness1, fs_in.uv).r : 0.05;
+    vec3 albedo = hasDiffuse  ? texture(texture_diffuse1, fs_in.uv).rgb : vec3(0.8);
+    vec3 normal = hasNormal ? texture(texture_normal1, fs_in.uv).rgb : vec3(0.5,0.5,1.);
     normal = normal * 2. - 1.; // remap [0,1] to [-1,1]
-    normal = normalize(normal);
     normal = normalize(fs_in.TBN * normal);
 
     metallic = smoothstep(0.6, 0.65, metallic);
     roughness = pow(roughness, 1.);
 
-    vec3 l = normalize(lightPos - fs_in.vPos);
-
     vec3 v = normalize(camPos - fs_in.vPos);
 
-    c = BRDF(v, l, normal, metallic, roughness, albedo);
 
-    float shadow = ShadowCalculation(fs_in.FragPosLightSpace, normal);
 
-    c += albedo * .1;
-
-    c *= 1. - shadow;
+    for(int i=0; i < NUM_LIGHTS; i++){
+      vec3 l = normalize(lightPositions[i] - fs_in.vPos);
+      c += lightColors[i] * BRDF(v, l, normal, metallic, roughness, albedo);
+      if(i == 0){
+        float shadow = ShadowCalculation(fs_in.FragPosLightSpace);
+        c *= 1. - shadow;
+        c += albedo * .1;
+      }
+    }
 
     FragColor = vec4(c, 1.);
 }

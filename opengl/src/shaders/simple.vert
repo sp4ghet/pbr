@@ -19,15 +19,16 @@ uniform mat4 lightVP;
 void main()
 {
     gl_Position = MVP * vec4(aPos, 1.);
-    vs_out.vPos = (MVP * vec4(aPos, 1.)).xyz;
+    vec4 worldPos = model * vec4(aPos, 1.);
+    vs_out.vPos = worldPos.xyz / worldPos.w;
     vs_out.uv = st;
+
     vec3 T = normalize(vec3(model * vec4(aTangent, 0.0)));
     vec3 N = normalize(vec3(model * vec4(aNormal, 0.0)));
     // re-orthogonalize T with respect to N
     T = normalize(T - dot(T, N) * N);
     // then retrieve perpendicular vector B with the cross product of T and N
     vec3 B = cross(N, T);
-
     vs_out.TBN = mat3(T, B, N);
 
     mat4 lightMVP = lightVP * model;

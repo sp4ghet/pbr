@@ -6,6 +6,8 @@
 #include "mesh.h"
 #include "shader.h"
 #include "stb/stb_image.h"
+#include "textures.h"
+#include <map>
 #include <string>
 
 class Model {
@@ -15,13 +17,13 @@ public:
   void Draw(Shader &shader);
 
 private:
-  vector<Mesh> meshes;
-  vector<Texture> textures_loaded;
-  string directory;
+  std::vector<Mesh> meshes;
+  std::map<std::string, Texture> textures_loaded;
+  std::string directory;
 
-  void loadModel(string path);
+  void loadModel(std::string path);
   void processNode(aiNode *node, const aiScene *scene);
   Mesh processMesh(aiMesh *mesh, const aiScene *scene);
-  vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type,
-                                       string typename);
+  std::vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type,
+                                            std::string typename);
 };

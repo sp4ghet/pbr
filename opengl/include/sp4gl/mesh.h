@@ -2,11 +2,12 @@
 #include <glad/glad.h> // holds all OpenGL type declarations
 
 #include "shader.h"
+#include "stb/stb_image.h"
+#include "textures.h"
 #include <glm/glm.hpp>
+#include <map>
 #include <string>
 #include <vector>
-
-using namespace std;
 
 struct Vertex {
   glm::vec3 Position;
@@ -17,22 +18,20 @@ struct Vertex {
 
   Vertex(glm::vec3 pos, glm::vec3 n, glm::vec2 uv)
       : Position(pos), Normal(n), TexCoords(uv) {}
+  Vertex(glm::vec3 pos, glm::vec3 n, glm::vec3 t, glm::vec2 uv)
+      : Position(pos), Normal(n), TexCoords(uv), Tangent(t) {
+    BiTangent = glm::normalize(glm::cross(n, t));
+  }
   Vertex() {}
-};
-
-struct Texture {
-  unsigned int id;
-  string type;
-  string path;
 };
 
 class Mesh {
 public:
-  vector<Vertex> vertices;
-  vector<unsigned int> indices;
-  vector<Texture> textures;
-  Mesh(vector<Vertex> vertices, vector<unsigned int> indices,
-       vector<Texture> textures) {
+  std::vector<Vertex> vertices;
+  std::vector<unsigned int> indices;
+  std::vector<Texture> textures;
+  Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices,
+       std::vector<Texture> textures) {
     this->vertices = vertices;
     this->indices = indices;
     this->textures = textures;
@@ -42,12 +41,11 @@ public:
     setupMesh();
   }
 
+  Mesh() {}
+
   void Draw(Shader &shader);
 
 private:
   unsigned int VAO, VBO, EBO;
   void setupMesh();
 };
-
-unsigned int TextureFromFile(const char *path, const string &directory,
-                             bool gamma = false);

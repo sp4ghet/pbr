@@ -51,10 +51,10 @@ float LinearizeDepth(float depth)
 }
 
 void main(){
-    vec3 c = vec3(1.);
-    c  = texture(renderBuffer, TexCoords).rgb;
+    vec3 c = texture(renderBuffer, TexCoords).rgb;
 
-    c = smoothstep(vec3(0.), vec3(1.), c);
+    float exposure = .5;
+    c = vec3(1.) - exp(-c * exposure);
     c = pow(c, vec3(0.4545));
 
     FragColor = vec4(c, 1.);

@@ -30,7 +30,7 @@ set_target_properties(assimp PROPERTIES
 
 set(LIBS glfw3 glad opengl32 stb glm assimp)
 
-set(SRCS src/main.cpp src/shader.cpp src/image.cpp src/mesh.cpp src/model.cpp)
+set(SRCS src/main.cpp src/shader.cpp src/image.cpp src/mesh.cpp src/model.cpp src/textures.cpp)
 
 add_executable(sp4gl ${SRCS})
 target_link_libraries(sp4gl ${LIBS})

@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 class Shader {
 public:
@@ -14,6 +15,7 @@ public:
   const char *vPath;
   const char *fPath;
 
+  Shader();
   Shader(const char *vertexPath, const char *fragmentPath);
   void use();
 
@@ -23,6 +25,9 @@ public:
   void setFloat(const std::string &name, float value) const;
   void setVec3(const std::string &name, float valx, float valy,
                float valz) const;
+  void setVec3(const std::string &name, glm::vec3 value) const;
+  void setVec3Array(const std::string &name,
+                    std::vector<glm::vec3> values) const;
   void setVec4(const std::string &name, float valx, float valy, float valz,
                float valw) const;
 
