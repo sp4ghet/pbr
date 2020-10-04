@@ -3,6 +3,7 @@
 #include "glad/glad.h"
 #include "glfw3/glfw3.h"
 #include "ltc.h"
+#include "model.h"
 #include "shader.h"
 #include "stb/stb_image.h"
 #include <cstdio>
@@ -190,16 +191,22 @@ int main(int, char **) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glBindTexture(GL_TEXTURE_2D, 0);
 
+  Texture ltcMatTex = Texture(ltcMatId, GL_TEXTURE_2D, "ltc_mat");
+  Texture ltcMagTex = Texture(ltcMagId, GL_TEXTURE_2D, "ltc_mag");
+
   glm::vec3 lightCol = glm::vec3(1.);
   std::vector<Texture> lightTextures{};
   Mesh lightMesh = Mesh(quadVertices, quadIndices, lightTextures);
 
   unsigned int crateTexId = TextureFromFile("container.jpg", "./textures");
   std::vector<Texture> planeTextures{
-      Texture(crateTexId, GL_TEXTURE_2D, "texture_diffuse1"),
-      Texture(ltcMatId, GL_TEXTURE_2D, "ltc_mat"),
-      Texture(ltcMagId, GL_TEXTURE_2D, "ltc_mag")};
+      Texture(crateTexId, GL_TEXTURE_2D, "texture_diffuse1"), ltcMatTex,
+      ltcMagTex};
   Mesh planeMesh = Mesh(quadVertices, quadIndices, planeTextures);
+
+  Model backpack = Model("./resources/backpack/backpack.obj");
+  backpack.AddTexture(ltcMatTex);
+  backpack.AddTexture(ltcMagTex);
 
 #ifdef DEBUG
   int nrAttributes;
@@ -279,6 +286,27 @@ int main(int, char **) {
     shader.setVec3("lightColor", lightCol);
     shader.setVec3Array("lightVerts", lightVertices);
     planeMesh.Draw(shader);
+
+    shader.use();
+    glm::mat4 backpackModel = glm::mat4(1.);
+    backpackModel = glm::translate(backpackModel, glm::vec3(0., .5, 3.));
+    backpackModel =
+        glm::rotate(backpackModel, glm::radians(-90.f), glm::vec3(1., 0., 0.));
+    backpackModel = glm::scale(backpackModel, glm::vec3(0.5));
+
+    shader.setMat4("model", backpackModel);
+    mvp = proj * view * backpackModel;
+    shader.setMat4("MVP", mvp);
+    shader.setMat4("MVP", mvp);
+    shader.setVec3("camPos", camera.Position);
+    shader.setBool("hasDiffuse", true);
+    shader.setBool("hasSpecular", true);
+    shader.setBool("hasNormal", true);
+    shader.setBool("hasRoughness", true);
+    shader.setVec3("lightColor", lightCol);
+    shader.setVec3Array("lightVerts", lightVertices);
+
+    backpack.Draw(shader);
 
     // draw MSAA texture to intermediate buffer
     glBindFramebuffer(GL_READ_FRAMEBUFFER, msFbo);

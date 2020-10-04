@@ -1,11 +1,24 @@
 #include "model.h"
 
+// public ----------------------------------------------------------------------
+
 void Model::Draw(Shader &shader) {
   for (int i = 0; i < meshes.size(); ++i) {
     meshes[i].Draw(shader);
   }
 }
 
+void Model::AddTexture(Texture t) {
+  for (Mesh &m : meshes) {
+    m.textures.push_back(t);
+  }
+
+  for (Texture t : meshes[0].textures) {
+    printf("%s \n", t.uniformName.c_str());
+  }
+}
+
+// Private ---------------------------------------------------------------------
 void Model::loadModel(std::string path) {
   Assimp::Importer import;
   const aiScene *scene =

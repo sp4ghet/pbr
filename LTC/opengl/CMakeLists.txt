@@ -57,6 +57,13 @@ add_custom_command(TARGET sp4gl POST_BUILD
 )
 
 
+add_custom_command(TARGET sp4gl POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+  "${PROJECT_SOURCE_DIR}/resources"
+  $<TARGET_FILE_DIR:sp4gl>/resources
+)
+
+
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)

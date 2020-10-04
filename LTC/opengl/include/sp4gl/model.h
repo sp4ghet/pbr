@@ -15,6 +15,7 @@ public:
   Model(char *path) { loadModel(path); }
 
   void Draw(Shader &shader);
+  void AddTexture(Texture t);
 
 private:
   std::vector<Mesh> meshes;
