@@ -273,7 +273,8 @@ int main(int, char **) {
       ImGui::SliderFloat("Default roughness", &default_roughness, 0.0f, 1.0f);
       ImGui::ColorEdit3("Light Color", (float *)&lightCol.x,
                         ImGuiColorEditFlags_HDR |
-                            ImGuiColorEditFlags_PickerHueWheel);
+                            ImGuiColorEditFlags_PickerHueWheel |
+                            ImGuiColorEditFlags_Float);
 
       if (ImGui::Button("Recompile shader")) {
         recompileFlag = true;
