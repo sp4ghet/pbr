@@ -2,6 +2,9 @@
 #include "camera.h"
 #include "glad/glad.h"
 #include "glfw3/glfw3.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
 #include "ltc.h"
 #include "model.h"
 #include "shader.h"
@@ -135,17 +138,36 @@ int main(int, char **) {
     return -1;
   }
 
+  // setup opengl
   glViewport(0, 0, 800, 600);
 
+  // set callbacks
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
   // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   glfwSetCursorPosCallback(window, mouse_callback);
   glfwSetMouseButtonCallback(window, mouse_button_callback);
   glfwSetScrollCallback(window, scroll_callback);
 
-  stbi_set_flip_vertically_on_load(true);
+  // Setup Dear ImGui context
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO &io = ImGui::GetIO();
+  (void)io;
+  // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable
+  // Keyboard Controls io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; //
+  // Enable Gamepad Controls
+
+  // Setup Dear ImGui style
+  ImGui::StyleColorsDark();
+  // ImGui::StyleColorsClassic();
+
+  // Setup Platform/Renderer bindings
+  ImGui_ImplGlfw_InitForOpenGL(window, true);
+  const char *glsl_version = "#version 460 core";
+  ImGui_ImplOpenGL3_Init(glsl_version);
 
   // load images
+  stbi_set_flip_vertically_on_load(true);
   Shader shader("./shaders/simple.vert", "./shaders/simple.frag");
   Shader screenShader("./shaders/fullscreen_quad.vert",
                       "./shaders/postprocess.frag");
@@ -220,6 +242,11 @@ int main(int, char **) {
       std::vector<Texture>{Texture(colorBuf, GL_TEXTURE_2D, "renderBuffer")};
   fullScreenQuad = Mesh(quadVertices, quadIndices, fullScreenQuadTextures);
 
+  // Set up variables
+  bool show_normals = false, show_roughness = false;
+  float default_roughness = .5f;
+
+  // Render loop
   while (!glfwWindowShouldClose(window)) {
     deltaTime = (float)glfwGetTime() - prevTime;
     prevTime = (float)glfwGetTime();
@@ -231,6 +258,32 @@ int main(int, char **) {
     }
     // input
     processInput(window);
+
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    {
+      ImGui::Begin("Configure LTC");
+      ImGui::Text("I don't know how to ImGui");
+      ImGui::Checkbox("Show normals", &show_normals);
+      ImGui::Checkbox("Show roughness", &show_roughness);
+
+      ImGui::SliderFloat("Default roughness", &default_roughness, 0.0f, 1.0f);
+      ImGui::ColorEdit3("Light Color", (float *)&lightCol.x,
+                        ImGuiColorEditFlags_HDR |
+                            ImGuiColorEditFlags_PickerHueWheel);
+
+      if (ImGui::Button("Recompile shader")) {
+        recompileFlag = true;
+      }
+
+      ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+                  1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+      ImGui::End();
+    }
+
     glm::mat4 proj = glm::perspective(
         glm::radians(camera.Zoom),
         (float)resolution.first / (float)resolution.second, 0.001f, 100.f);
@@ -284,6 +337,9 @@ int main(int, char **) {
     shader.setBool("hasNormal", false);
     shader.setBool("hasRoughness", false);
     shader.setVec3("lightColor", lightCol);
+    shader.setBool("showNormal", show_normals);
+    shader.setBool("showRoughness", show_roughness);
+    shader.setFloat("roughness", default_roughness);
     shader.setVec3Array("lightVerts", lightVertices);
     planeMesh.Draw(shader);
 
@@ -303,6 +359,9 @@ int main(int, char **) {
     shader.setBool("hasSpecular", true);
     shader.setBool("hasNormal", true);
     shader.setBool("hasRoughness", true);
+    shader.setBool("showNormal", show_normals);
+    shader.setBool("showRoughness", show_roughness);
+    shader.setFloat("roughness", default_roughness);
     shader.setVec3("lightColor", lightCol);
     shader.setVec3Array("lightVerts", lightVertices);
 
@@ -324,11 +383,23 @@ int main(int, char **) {
     screenShader.use();
     fullScreenQuad.Draw(screenShader);
 
+    // show Imgui
+    ImGui::Render();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
     // check and call events and swap the buffers
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
 
+  // clean up
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
+
+  glfwDestroyWindow(window);
   glfwTerminate();
   return 0;
 }

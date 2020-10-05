@@ -13,6 +13,8 @@ uniform sampler2D texture_specular1; // metallic
 uniform sampler2D texture_roughness1; // roughness
 uniform sampler2D texture_normal1;
 
+uniform float roughness;
+
 uniform sampler2D ltc_mat;
 uniform sampler2D ltc_mag;
 
@@ -29,7 +31,11 @@ uniform vec3 camPos;
 uniform mat4 MVP;
 uniform mat4 model;
 
+uniform bool showNormal;
+uniform bool showRoughness;
+
 const float PI = 3.14159265;
+
 
 
 float IntegrateEdge(vec3 v1, vec3 v2)
@@ -201,7 +207,7 @@ vec3 LTC_Evaluate(vec3 N, vec3 V, vec3 P, mat3 Minv){
 void main(){
     vec3 c = vec3(0.);
     float metallic = hasSpecular ? texture(texture_specular1, fs_in.uv).r : 0.01;
-    float roughness = hasRoughness  ? texture(texture_roughness1, fs_in.uv).r : 0.5;
+    float alpha = hasRoughness  ? texture(texture_roughness1, fs_in.uv).r : roughness;
     vec3 albedo = hasDiffuse  ? texture(texture_diffuse1, fs_in.uv).rgb : vec3(0.8);
     vec3 normal = hasNormal ? texture(texture_normal1, fs_in.uv).rgb : vec3(0.5,0.5,1.);
     normal = normal * 2. - 1.; // remap [0,1] to [-1,1]
@@ -212,7 +218,6 @@ void main(){
     vec3 pos = fs_in.vPos;
 
     float theta = acos(dot(n,v));
-    float alpha = roughness * roughness;
     vec2 uv = vec2(alpha, theta/(0.5*PI));
     const float LUT_SIZE  = 64.0;
     const float LUT_SCALE = (LUT_SIZE - 1.0)/LUT_SIZE;
@@ -236,6 +241,16 @@ void main(){
     c = lightColor * (spec + albedo * diff);
     c /= 2. * PI;
     c += albedo * .1;
+
+    if(showNormal && !showRoughness){
+        c = normal;
+    }
+    if(showRoughness && !showNormal){
+        c = vec3(1.) * alpha;
+    }
+    if(showNormal && showRoughness){
+        c = normal * alpha;
+    }
 
     FragColor = vec4(c, 1.);
 }

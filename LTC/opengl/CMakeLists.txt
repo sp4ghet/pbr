@@ -15,6 +15,12 @@ set_target_properties(glfw3 PROPERTIES
 add_library(glad "${PROJECT_SOURCE_DIR}/thirdparty/glad.c")
 target_include_directories(glad PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
+set(IMGUI_DIR "${PROJECT_SOURCE_DIR}/thirdparty/imgui/")
+file(GLOB IMGUI_SRCS "${IMGUI_DIR}/*.cpp")
+add_library(imgui ${IMGUI_SRCS})
+target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/include/imgui")
+target_include_directories(imgui PRIVATE "${PROJECT_SOURCE_DIR}/include/")
+
 add_library(stb INTERFACE)
 
 add_library(glm INTERFACE)
@@ -28,7 +34,7 @@ set_target_properties(assimp PROPERTIES
   INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/include/assimp"
 )
 
-set(LIBS glfw3 glad opengl32 stb glm assimp)
+set(LIBS glfw3 glad opengl32 stb glm assimp imgui)
 
 set(SRCS src/main.cpp src/shader.cpp src/image.cpp src/mesh.cpp src/model.cpp src/textures.cpp)
 
