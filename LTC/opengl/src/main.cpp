@@ -215,20 +215,22 @@ int main(int, char **) {
 
   Texture ltcMatTex = Texture(ltcMatId, GL_TEXTURE_2D, "ltc_mat");
   Texture ltcMagTex = Texture(ltcMagId, GL_TEXTURE_2D, "ltc_mag");
-
+  unsigned int lightTexId = TextureFromFile("icon.png", "./textures");
+  Texture lightTex(lightTexId, GL_TEXTURE_2D, "lightCookie");
   glm::vec3 lightCol = glm::vec3(1.);
-  std::vector<Texture> lightTextures{};
+  std::vector<Texture> lightTextures{lightTex};
   Mesh lightMesh = Mesh(quadVertices, quadIndices, lightTextures);
 
   unsigned int crateTexId = TextureFromFile("container.jpg", "./textures");
   std::vector<Texture> planeTextures{
       Texture(crateTexId, GL_TEXTURE_2D, "texture_diffuse1"), ltcMatTex,
-      ltcMagTex};
+      ltcMagTex, lightTex};
   Mesh planeMesh = Mesh(quadVertices, quadIndices, planeTextures);
 
   Model backpack = Model("./resources/backpack/backpack.obj");
   backpack.AddTexture(ltcMatTex);
   backpack.AddTexture(ltcMagTex);
+  backpack.AddTexture(lightTex);
 
 #ifdef DEBUG
   int nrAttributes;
@@ -243,7 +245,7 @@ int main(int, char **) {
   fullScreenQuad = Mesh(quadVertices, quadIndices, fullScreenQuadTextures);
 
   // Set up variables
-  bool show_normals = false, show_roughness = false;
+  bool show_normals = false, show_roughness = false, ltcTwoSided = true;
   float default_roughness = .5f;
 
   // Render loop
@@ -269,6 +271,7 @@ int main(int, char **) {
       ImGui::Text("I don't know how to ImGui");
       ImGui::Checkbox("Show normals", &show_normals);
       ImGui::Checkbox("Show roughness", &show_roughness);
+      ImGui::Checkbox("Area Light Two Sided", &ltcTwoSided);
 
       ImGui::SliderFloat("Default roughness", &default_roughness, 0.0f, 1.0f);
       ImGui::ColorEdit3("Light Color", (float *)&lightCol.x,
@@ -337,11 +340,12 @@ int main(int, char **) {
     shader.setBool("hasSpecular", false);
     shader.setBool("hasNormal", false);
     shader.setBool("hasRoughness", false);
-    shader.setVec3("lightColor", lightCol);
     shader.setBool("showNormal", show_normals);
     shader.setBool("showRoughness", show_roughness);
     shader.setFloat("roughness", default_roughness);
+    shader.setVec3("lightColor", lightCol);
     shader.setVec3Array("lightVerts", lightVertices);
+    shader.setBool("ltcTwoSided", ltcTwoSided);
     planeMesh.Draw(shader);
 
     shader.use();
@@ -365,7 +369,7 @@ int main(int, char **) {
     shader.setFloat("roughness", default_roughness);
     shader.setVec3("lightColor", lightCol);
     shader.setVec3Array("lightVerts", lightVertices);
-
+    shader.setBool("ltcTwoSided", ltcTwoSided);
     backpack.Draw(shader);
 
     // draw MSAA texture to intermediate buffer

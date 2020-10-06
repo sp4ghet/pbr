@@ -10,9 +10,10 @@ in VS_OUT{
 
 
 uniform vec3 color;
+uniform sampler2D lightCookie;
 
 void main(){
     vec3 c = vec3(color);
 
-    FragColor = vec4(c, 1.);
+    FragColor = vec4(fs_in.uv, 0., 1.);
 }

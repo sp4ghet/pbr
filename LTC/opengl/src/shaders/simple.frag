@@ -15,16 +15,17 @@ uniform sampler2D texture_normal1;
 
 uniform float roughness;
 
+const int NUM_LIGHT_VERTS = 4;
+uniform vec3 lightVerts[NUM_LIGHT_VERTS];
+uniform bool ltcTwoSided;
 uniform sampler2D ltc_mat;
 uniform sampler2D ltc_mag;
+uniform sampler2D lightCookie;
 
 uniform bool hasDiffuse;
 uniform bool hasNormal;
 uniform bool hasRoughness;
 uniform bool hasSpecular;
-
-const int NUM_LIGHT_VERTS = 4;
-uniform vec3 lightVerts[NUM_LIGHT_VERTS];
 
 uniform vec3 lightColor;
 uniform vec3 camPos;
@@ -37,169 +38,154 @@ uniform bool showRoughness;
 const float PI = 3.14159265;
 
 
-
-float IntegrateEdge(vec3 v1, vec3 v2)
-{
-    float cosTheta = dot(v1, v2);
-    float theta = acos(cosTheta);
-    float res = cross(v1, v2).z * ((theta > 0.001) ? theta/sin(theta) : 1.0);
-
-    return res;
+float ClippedSphere(vec3 meanFlux){
+    // Real-Time Area Lighting: a Journey From Research to Production (2016) p. 102
+    // https://blog.selfshadow.com/publications/s2016-advances/s2016_ltc_rnd.pdf
+    // Approximation of sphere clipping given the flux towards a sphere
+    float l = length(meanFlux);
+    return (l*l + meanFlux.z) / (l + 1.);
 }
 
-void ClipQuadToHorizon(inout vec3 L[5], out int n)
+vec3 IntegrateEdge(vec3 v1, vec3 v2)
 {
-    // detect clipping config
-    int config = 0;
-    if (L[0].z > 0.0) config += 1;
-    if (L[1].z > 0.0) config += 2;
-    if (L[2].z > 0.0) config += 4;
-    if (L[3].z > 0.0) config += 8;
+    float x = dot( v1, v2 );
+    float y = abs( x );
 
-    // clip
-    n = 0;
-
-    if (config == 0)
-    {
-        // clip all
-    }
-    else if (config == 1) // V1 clip V2 V3 V4
-    {
-        n = 3;
-        L[1] = -L[1].z * L[0] + L[0].z * L[1];
-        L[2] = -L[3].z * L[0] + L[0].z * L[3];
-    }
-    else if (config == 2) // V2 clip V1 V3 V4
-    {
-        n = 3;
-        L[0] = -L[0].z * L[1] + L[1].z * L[0];
-        L[2] = -L[2].z * L[1] + L[1].z * L[2];
-    }
-    else if (config == 3) // V1 V2 clip V3 V4
-    {
-        n = 4;
-        L[2] = -L[2].z * L[1] + L[1].z * L[2];
-        L[3] = -L[3].z * L[0] + L[0].z * L[3];
-    }
-    else if (config == 4) // V3 clip V1 V2 V4
-    {
-        n = 3;
-        L[0] = -L[3].z * L[2] + L[2].z * L[3];
-        L[1] = -L[1].z * L[2] + L[2].z * L[1];
-    }
-    else if (config == 5) // V1 V3 clip V2 V4) impossible
-    {
-        n = 0;
-    }
-    else if (config == 6) // V2 V3 clip V1 V4
-    {
-        n = 4;
-        L[0] = -L[0].z * L[1] + L[1].z * L[0];
-        L[3] = -L[3].z * L[2] + L[2].z * L[3];
-    }
-    else if (config == 7) // V1 V2 V3 clip V4
-    {
-        n = 5;
-        L[4] = -L[3].z * L[0] + L[0].z * L[3];
-        L[3] = -L[3].z * L[2] + L[2].z * L[3];
-    }
-    else if (config == 8) // V4 clip V1 V2 V3
-    {
-        n = 3;
-        L[0] = -L[0].z * L[3] + L[3].z * L[0];
-        L[1] = -L[2].z * L[3] + L[3].z * L[2];
-        L[2] =  L[3];
-    }
-    else if (config == 9) // V1 V4 clip V2 V3
-    {
-        n = 4;
-        L[1] = -L[1].z * L[0] + L[0].z * L[1];
-        L[2] = -L[2].z * L[3] + L[3].z * L[2];
-    }
-    else if (config == 10) // V2 V4 clip V1 V3) impossible
-    {
-        n = 0;
-    }
-    else if (config == 11) // V1 V2 V4 clip V3
-    {
-        n = 5;
-        L[4] = L[3];
-        L[3] = -L[2].z * L[3] + L[3].z * L[2];
-        L[2] = -L[2].z * L[1] + L[1].z * L[2];
-    }
-    else if (config == 12) // V3 V4 clip V1 V2
-    {
-        n = 4;
-        L[1] = -L[1].z * L[2] + L[2].z * L[1];
-        L[0] = -L[0].z * L[3] + L[3].z * L[0];
-    }
-    else if (config == 13) // V1 V3 V4 clip V2
-    {
-        n = 5;
-        L[4] = L[3];
-        L[3] = L[2];
-        L[2] = -L[1].z * L[2] + L[2].z * L[1];
-        L[1] = -L[1].z * L[0] + L[0].z * L[1];
-    }
-    else if (config == 14) // V2 V3 V4 clip V1
-    {
-        n = 5;
-        L[4] = -L[0].z * L[3] + L[3].z * L[0];
-        L[0] = -L[0].z * L[1] + L[1].z * L[0];
-    }
-    else if (config == 15) // V1 V2 V3 V4
-    {
-        n = 4;
-    }
-
-    if (n == 3)
-        L[3] = L[0];
-    if (n == 4)
-        L[4] = L[0];
+    // Real-Time Area Lighting: a Journey From Research to Production (2016) p. 74
+    // https://blog.selfshadow.com/publications/s2016-advances/s2016_ltc_rnd.pdf
+    // a cubic fit to theta / sin(theta)
+    float a = 0.8543985 + ( 0.4965155 + 0.0145206 * y ) * y;
+    float b = 3.4175940 + ( 4.1616724 + y ) * y;
+    float v = a / b;
+    float theta_sintheta = ( x > 0.0 ) ? v : 0.5 * inversesqrt( max( 1.0 - x * x, 1e-7 ) ) - v;
+    return cross( v1, v2 ) * theta_sintheta;
 }
 
-vec3 LTC_Evaluate(vec3 N, vec3 V, vec3 P, mat3 Minv){
- vec3 T1, T2;
-    T1 = normalize(V - N*dot(V, N));
-    T2 = cross(N, T1);
+vec3 LTC_Evaluate(vec3 N, vec3 V, vec3 P, mat3 Minv, bool twoSided){
+
+    vec3 T1, T2;
+    T1 = normalize( V - N * dot( V, N ) );
+    T2 = - cross( N, T1 );
 
     // rotate area light in (T1, T2, N) basis
     Minv = Minv * transpose(mat3(T1, T2, N));
 
-    // polygon (allocate 5 vertices for clipping)
-    vec3 L[5];
+    vec3 L[4];
     L[0] = Minv * (lightVerts[0] - P);
     L[1] = Minv * (lightVerts[1] - P);
     L[2] = Minv * (lightVerts[2] - P);
     L[3] = Minv * (lightVerts[3] - P);
-
-    int n;
-    ClipQuadToHorizon(L, n);
-
-    if (n == 0)
-        return vec3(0, 0, 0);
-
     // project onto sphere
     L[0] = normalize(L[0]);
     L[1] = normalize(L[1]);
     L[2] = normalize(L[2]);
     L[3] = normalize(L[3]);
-    L[4] = normalize(L[4]);
 
     // integrate
-    float sum = 0.0;
+    vec3 flux = vec3(0.);
 
-    sum += IntegrateEdge(L[0], L[1]);
-    sum += IntegrateEdge(L[1], L[2]);
-    sum += IntegrateEdge(L[2], L[3]);
-    if (n >= 4)
-        sum += IntegrateEdge(L[3], L[4]);
-    if (n == 5)
-        sum += IntegrateEdge(L[4], L[0]);
+    flux += IntegrateEdge(L[0], L[1]);
+    flux += IntegrateEdge(L[1], L[2]);
+    flux += IntegrateEdge(L[2], L[3]);
+    flux += IntegrateEdge(L[3], L[0]);
 
-    sum = abs(sum);
+    float irradiance = ClippedSphere(flux);
 
-    vec3 Lo_i = vec3(sum, sum, sum);
+    // check that we are on front face
+    // if not, then invert winding order
+    // https://github.com/mrdoob/three.js/blob/ebd5b3a3b370fb25e6f5f39153cb694c63ecc4b5/src/renderers/shaders/ShaderChunk/bsdfs.glsl.js#L202
+    vec3 v1 = lightVerts[ 1 ] - lightVerts[ 0 ];
+    vec3 v2 = lightVerts[ 3 ] - lightVerts[ 0 ];
+    vec3 lightNormal = cross( v1, v2 );
+
+    if( dot( lightNormal, P - lightVerts[ 0 ] ) < 0.0 ) irradiance = -irradiance;
+
+    irradiance = twoSided ? abs(irradiance) : max(irradiance, 0.);
+
+    vec3 Lo_i = vec3(irradiance);
+
+    return Lo_i;
+}
+
+vec3 FetchDiffuseFilteredTexture(sampler2D cookie, vec3 f, vec3[4] L){
+    vec3 V1 = (L[1] - L[0]);
+    vec3 V2 = (L[3] - L[0]);
+    vec3 n = cross(V1, V2);
+    vec3 P = f * (dot(L[0], n) / dot(f, n)) - L[0];
+
+
+    float dot_V1_V2 = dot(V1, V2);
+    float inv_dot_V1_V1 = 1.0 / dot(V1, V1);
+    vec3 V2_ = V2 - V1 * dot_V1_V2 * inv_dot_V1_V1;
+    vec2 Puv;
+    Puv.y = dot(V2_, P) / dot(V2_, V2_);
+    Puv.x = dot(V1, P)*inv_dot_V1_V1 - dot_V1_V2*inv_dot_V1_V1*Puv.y ;
+
+     // LOD
+    float planeAreaSquared = dot(n, n);
+    float planeDistxPlaneArea = dot(n, L[0]);
+    float d = abs(planeDistxPlaneArea) / pow(planeAreaSquared, 0.75);
+    float lod = log(2048.0*d)/log(3.0);
+
+    vec2 uv = clamp(Puv, vec2(0.0), vec2(1.0));
+
+    return textureLod(cookie, uv, lod).rgb;
+}
+
+vec3 LTC_EvaluateWithTexture(sampler2D cookie, vec3 N, vec3 V, vec3 P, mat3 Minv, bool twoSided){
+
+    vec3 T1, T2;
+    T1 = normalize( V - N * dot( V, N ) );
+    T2 = - cross( N, T1 );
+
+    // rotate area light in (T1, T2, N) basis
+    Minv = Minv * transpose(mat3(T1, T2, N));
+
+    // light vertices in cosine lobe space
+    vec3 LC[4];
+    LC[0] = Minv * (lightVerts[0] - P);
+    LC[1] = Minv * (lightVerts[1] - P);
+    LC[2] = Minv * (lightVerts[2] - P);
+    LC[3] = Minv * (lightVerts[3] - P);
+
+    // light vertices in cosine lobe space projected to hemisphere
+    vec3 LH[4];
+    LH[0] = normalize(LC[0]);
+    LH[1] = normalize(LC[1]);
+    LH[2] = normalize(LC[2]);
+    LH[3] = normalize(LC[3]);
+
+    // integrate
+    vec3 flux = vec3(0.);
+
+    flux += IntegrateEdge(LH[0], LH[1]);
+    flux += IntegrateEdge(LH[1], LH[2]);
+    flux += IntegrateEdge(LH[2], LH[3]);
+    flux += IntegrateEdge(LH[3], LH[0]);
+
+    // check that we are on front face
+    // if not, then invert winding order
+    // https://github.com/mrdoob/three.js/blob/ebd5b3a3b370fb25e6f5f39153cb694c63ecc4b5/src/renderers/shaders/ShaderChunk/bsdfs.glsl.js#L202
+    vec3 v1 = lightVerts[ 1 ] - lightVerts[ 0 ];
+    vec3 v2 = lightVerts[ 3 ] - lightVerts[ 0 ];
+    vec3 lightNormal = cross( v1, v2 );
+    if(twoSided){
+        if(dot( lightNormal, P - lightVerts[ 0 ] ) < 0.0 ){
+            flux = -flux;
+        }
+    }else{
+        if(dot( lightNormal, P - lightVerts[ 0 ] ) < 0.0 ){
+            return vec3(0.);
+        }
+    }
+
+    vec3 textureLight = FetchDiffuseFilteredTexture(cookie, flux, LC);
+
+    float irradiance = ClippedSphere(flux);
+
+    irradiance = max(irradiance, 0.);
+
+    vec3 Lo_i = vec3(irradiance) * textureLight;
 
     return Lo_i;
 }
@@ -231,12 +217,12 @@ void main(){
       vec3(t.w, 0., t.x)
     );
 
-    vec3 spec = LTC_Evaluate(n, v, pos, Minv);
+    vec3 spec = LTC_EvaluateWithTexture(lightCookie, n, v, pos, Minv, ltcTwoSided);
 
     float norm = texture(ltc_mag, uv).r;
     spec *= norm;
 
-    vec3 diff = LTC_Evaluate(n, v, pos, mat3(1.));
+    vec3 diff = LTC_EvaluateWithTexture(lightCookie, n, v, pos, mat3(1.), ltcTwoSided);
 
     c = lightColor * (spec + albedo * diff);
     c /= 2. * PI;
