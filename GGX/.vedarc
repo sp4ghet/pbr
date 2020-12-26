@@ -1,0 +1,7 @@
+{
+  "audio": true,
+  "glslify": true,
+  "pixelRatio": 1.,
+  "frameskip": 1.,
+  "fftSmoothingTimeConstant": 0.1,
+}

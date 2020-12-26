@@ -2,7 +2,6 @@
 precision highp float;
 
 uniform vec2 resolution;
-uniform sampler2D tNoise;
 uniform float time;
 const float PI = 3.14159265;
 
@@ -43,9 +42,6 @@ float map(vec3 q){
 
 
   p = q;
-  // float ns = texture2D(tNoise, fract(p.xz * .05)).r;
-  // ns = texture2D(tNoise, fract(p.xz * .1 + ns * .1)).r * .5;
-  // p.y += ns;
   d = smoothmin(d, p.y, .4);
   // d = min(d, p.y);
 
