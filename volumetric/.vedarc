@@ -1,0 +1,12 @@
+{
+  "audio": true, // Enable audio input
+  "glslify": true,
+  "pixelRatio": 1.,
+  "frameskip": 1.,
+  "fftSmoothingTimeConstant": 0.1,
+  IMPORTED: {
+    tNoise:{
+      "PATH": "../images/fbm2.jpg"
+    }
+  },
+}
